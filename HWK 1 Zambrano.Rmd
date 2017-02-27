@@ -1,0 +1,164 @@
+---
+title: "HWK 1 - Zambrano"
+output: word_document
+---
+#Kyle Hafey
+#4.21.2016
+##Question 1
+```{r}
+#Do the Arsenic/fish problem with new parameters
+#Ho: Theta <=.09
+#ha: Theta>.09
+#log normal random variabel with parameters:
+#Mean of log(theta)
+logmean = -2.12
+#Sd of log(theta)
+logsd = 1.34
+#sample
+stdev = (.028)/(30^.5)
+xbar = .052
+n = 20000
+
+#Do simulation and calculate probabilities
+theta = rlnorm(n,logmean,logsd)
+xsim = c()
+for(i in 1:n){
+  xsim[i] = rlnorm(1, theta[i], stdev)
+}
+simulation1 = data.frame(theta,xsim)
+#View(simulation1)
+
+safelevel = .09
+#Calcualte simulations below the safe level
+ho = ifelse(theta <= safelevel,1,0)
+ho = sum(ho)
+#calculate probability of being below the safe level
+prho = ho/n
+#Calcualte the simulations above the safe level
+ha = ifelse(theta > safelevel,1,0)
+ha = sum(ha)
+#calculate probabilirty of being above the safe level
+prha = ha/n
+
+#Calculate probabilities from the realized value of xbar.
+xbar = .052 #From earlier
+#Use epsilon of .10 from your example
+epsilon = .10
+#Calculate interval
+lowerbound = xbar*(1-epsilon)
+upperbound = xbar*(1+epsilon)
+meanininterval = numeric(n)
+table = cbind(simulation1,meanininterval)
+#View(table)
+for(i in 1:n){
+  if(table$theta[i] >= lowerbound & table$theta[i]<= upperbound){
+    table$meanininterval[i] = theta[i]
+  }
+}
+marker = ifelse(table$meanininterval > 0,1,0)
+thetagivendata = sum(marker)
+sho = ifelse(table$theta < safelevel,1,0)
+trueho = sum(sho)
+trueha = n-trueho
+hodata = ifelse(table$meanininterval < safelevel & table$meanininterval > 0,1,0)
+hoanddata = sum(hodata)
+haanddata = thetagivendata-hoanddata
+pdatagivenho = hoanddata/trueho
+pdatagivenha = haanddata/trueha
+
+#Calculate Prior Odds, Bayes Factor, and Posterior Odds.
+priorodds = prha/prho
+bayesfactor = pdatagivenha/pdatagivenho
+posteriorodds = priorodds*bayesfactor
+ph1givendata = posteriorodds/(1+posteriorodds)
+#Present results
+output = data.frame("Prior_Odds" = priorodds, "Bayes_Factor" = bayesfactor, "Posterior_Odds" = posteriorodds)
+(output)
+```
+From this example, we can see that the prior odds are 1.39 to 1 that the mercury levels in the water are above the safe level of 0.09. We simulated these results by using a log normal distribution and estimation methods. The bayes factor and the posterior odds are equal to 0. In this case, we can change the bayes factor and the posterior odds by changing the value of epsilon that sets the interval. The 0 bayes factor and 0 posterior odds tells us that the probability of our simulated date being produced under the alternative hypothesis is zero. We should  consider changing the value of epsilon that creates our interval. This will allow us to improve the odds of actually observing this simulation. 
+
+
+##Question 2
+###Part a
+```{r}
+#Ho: theta = 0
+#Ha:= theta~U(0,1)
+#Create base parameters
+rand = runif(n)
+sdd = 5/sqrt(100)
+#Create simulation
+theta = ifelse(rand<.5,0,runif(n))
+xsim = rnorm(n,theta,sdd)
+#Compute test statistic/Zscore
+teststat = (xsim-theta)/sdd
+simulation2 = data.frame(theta,xsim,teststat)
+
+#part a
+#Subset data with those that meet pval = .05 criteria
+pval = simulation2[which(teststat >=1.63 & teststat <1.67),]
+#View(pval)
+nnn = length(pval[,1])
+noeffect = ifelse(pval[,1] ==0,1,0)
+noeffectt = sum(noeffect)
+effectt = nnn-noeffectt
+prnoeffect = noeffectt/nnn
+preffect = effectt/nnn
+results = data.frame(prnoeffect,preffect)
+View(results)
+```
+From this simulation, 44% will have no effect and 56% will have an effect. These results are subject to change based on the simulation, but the results should be presented int he table. This means that 46% of the results that has a p value of .05 actually had a negligible effect(no effect). this simulation is questionable.  
+
+###Part b
+```{r}
+#calculating error types?
+#Subset data into null and alt by subseting the theta values
+null = simulation2[which(simulation2[,1]==0),]
+nnull = length(null[,1])
+alt = simulation2[which(simulation2[,1]!=0),]
+nalt = length(alt[,1])  
+#Only allow values that we reject for both the null and alternative hypothesis
+rejectnull = null[which(null[,3] > 1.65),]
+nrejectnull = length(rejectnull[,1])
+rejectalt = alt[which(alt[,3] > 1.65),]
+nrejectalt = length(rejectalt[,1])
+#Now, Calculate the pre experimental rejection ratio
+#Power should be about .05 because the significance value is .05
+power = nrejectalt/nalt
+#rpre = 1-power/alpha
+rpre = (1-power)/.05
+(rpre)
+```
+The power is about .05 which makes sense because we are analyzing it with a p-value of .05. The pre experimental rejection ratio is around 19, but this can change due to the simulation aspect of the estimation. It should be around 18 or 19. 
+
+
+##Question 3
+```{r}
+pval3 = simulation2[which(simulation2[,3] >=2.326 & simulation2[,3] <2.366),]
+xsim2 = rnorm(n, simulation2[,1],sdd)
+teststat2 = (xsim2-simulation2[,1])/sdd
+simulation3 = data.frame(theta,xsim2,teststat2)
+#View(simulation3)
+#Subset again
+probability = simulation2[which(simulation2[,3] >=2.346 & simulation2[,3] >2.346),]
+nprobability = length(probability[,1])
+Results = nprobability/n
+(Results)
+```
+I estimate the probability that 1 sided p-value from the second experiment will be 1% or smaller, given that the first measurement had a p-value of p=.01 to be around 1%. Depending on the simulation, the value can change, but it will be very small. This means the researchers results will be extremely hard to replicate. It will only be replicated successfully about 1% of the time. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

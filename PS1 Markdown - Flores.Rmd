@@ -1,0 +1,187 @@
+---
+title: "ps1 - flores"
+output: word_document
+---
+#Kyle Hafey
+#Problem set 1 
+#Flores
+
+```{r}
+#load in libraries and install packages
+library(foreign)
+library(robustbase)
+library(doBy)
+library(multcomp)
+library(mgcv)
+library(aod)
+library(mfx)
+library(stats4)
+library(margins)
+library(MASS)
+#load in data
+d = read.dta("~/Desktop/Data/fl89-91eco526W16.dta")
+d$agesq = d$dmage^2
+```
+
+#Question 3 Part A
+```{r}
+probit = glm(d$dead ~ 1 + d$alcohol + d$dmage + d$agesq + d$dmar + d$dmeduc + d$foreignb + d$tobacco + d$mblack + d$motherr + d$mhispan, family = binomial(link = "probit"), data = d)
+summary(probit)
+```
+
+#Question 3 Part B
+```{r}
+wald.test(b = coef(probit), Sigma = vcov(probit), Terms = 2:11)
+#Test does not present evidence the coefficients should all be 0. 
+probability = predict(probit, type = "response")
+pcorrect = 1 - mean(abs(probability - d$dead))
+#It appears percent of observations correctly predicted is 98.32%%
+```
+
+#Question 3 Part C
+```{r}
+probitmfx(d$dead ~ 1 + d$alcohol + d$dmage + d$agesq + d$dmar + d$dmeduc + d$foreignb + d$tobacco + d$mblack + d$motherr + d$mhispan, data = d, atmean = FALSE)
+#This presents output in the consule. It will present the marginal effects of each 
+#variable at the average
+```
+
+#Question 3 Part D
+```{r}
+probitmfx(d$dead ~ 1 + d$alcohol + d$dmage + d$agesq + d$dmar + d$dmeduc + d$foreignb + d$tobacco + d$mblack + d$motherr + d$mhispan, data = d, atmean = TRUE)
+#This presents output in the consule. It will present the marginal effects of each 
+#variable at the mean. Both models are very similar, but the results at the average 
+#are slightly larger than at the mean. The mean can be misleading, thus it is less 
+#reliable and we should use the model that is not at the mean. 
+```
+
+#Question 3 Part E
+```{r}
+probit2 = glm(d$dead ~ 1 + factor(d$alcohol) + d$dmage + d$agesq + d$dmar + d$dmeduc + d$foreignb + factor(d$tobacco) + d$mblack + d$motherr + d$mhispan, family = binomial(link = "probit"), data = d)
+summary(probit2)
+#the models are very similar. The continuous approximation is very similar to the "first
+#differences"  model. 
+```
+
+#Question 4 Part A
+```{r}
+logit = glm(d$dead ~ 1 + d$alcohol + d$dmage + d$agesq + d$dmar + d$dmeduc + d$foreignb + d$tobacco + d$mblack + d$motherr + d$mhispan, family = binomial(link = "logit"), data = d)
+summary(logit)
+#The model coefficients are different, but we cannot interpret these coefficients. Instead,
+#we can analyze the direction of the coefficients, which are the same in both models. 
+wald.test(b = coef(logit), Sigma = vcov(logit), Terms = 2:11)
+#Same results as before, there is not evidence that the coefficients should be 0. 
+probabilitylogit = predict(logit, type = "response")
+pcorrectlogit = 1 - mean(abs(probabilitylogit - d$dead))
+#It appears the percent of observations correctly predicted is 98.32%
+logitmfx(d$dead ~ 1 + d$alcohol + d$dmage + d$agesq + d$dmar + d$dmeduc + d$foreignb + d$tobacco + d$mblack + d$motherr + d$mhispan, data = d, atmean = FALSE)
+#This displays the marginal affects at the average
+logit2 = glm(d$dead ~ 1 + factor(d$alcohol) + d$dmage + d$agesq + d$dmar + d$dmeduc + d$foreignb + factor(d$tobacco) + d$mblack + d$motherr + d$mhispan, family = binomial(link = "logit"), data = d)
+summary(logit2)
+```
+
+#Question 4 Part B
+```{r}
+#The coefficients in the probit and logit models move in the same direction, but once 
+#again we cannot say anything about the magnitude of change because it is difficult to 
+#interpret. the marginal effects of the probit and logit models move in the same direction
+#and the significance values are similar. we still cannot interpret the magnitude of the 
+#slope coefficients. 
+```
+
+#Question 4 Part C
+```{r}
+#I have been having some trouble solving the maximum liklihood of this question
+sum = summaryBy(dead ~ dmage, data = d)
+df = data.frame(sum)
+View(df)
+#The probability is minimizes at age 10,11,21,49. 
+#I still need to figure ut the confidence interval and the log liklihood, but I think 
+#using stata would be better for this problem
+```
+
+#Question 4 Part D
+```{r}
+x0 = c(1,0,25,625,1,12,0,1,0,0,0)
+beta = logit$coefficients
+lgp = plogis(t(x0)%*%(beta))
+x00 = data.frame("constant"=1, "alcohol"= 0,"dmage"=25,"agesq"=625,"dmar"=1,"dmeduc"=12,"foreignb"=0, "tobacco"=1,"mblack"=0,"motherr"=0, "mhispan"=0)
+predict4d = predict(logit, x00, se.fit = TRUE, type = "response")
+CI = c(predict4d$fit - 1.96*predict4d$se.fit, predict4d$fit + 1.96*predict4d$se.fit)
+#1.08% chance of infant mortality given the circumstances.
+```
+
+#Question 4 Part E
+```{r}
+###I couldnt figure this one out in R. 
+```
+
+
+#Question 4 Part F
+```{r}
+#lpm = lmrob(dead ~ alcohol + dmage + agesq + dmar + dmeduc + foreignb + tobacco + 
+#mblack + motherr + mhispan,  data = d)
+#couldnt get lmrob to work in markdown
+lpm = lm(dead ~ alcohol + dmage + agesq + dmar + dmeduc + foreignb + tobacco + mblack + motherr + mhispan,  data = d)
+summary(lpm)
+test = coeftest(lpm, vov = vcovHC(lpm, type = "HC0"))
+margin = margins(lpm, type="response", data = d)
+#The lpm model is poretty close to what I observed in the probit/logit models. 
+#It is a good model
+```
+
+#Question 5
+```{r}
+#When computing the log liklihod in R, first you have to code the function with the 
+#parameters you want to maximize. Then, you maximize the negative of that function. 
+#This is essentially a maximum. There are multiple ways you can compute the function 
+#or maximize the minimum of the function. The function will converge to the level that 
+#you set it to. You an change it if you wish. It will itterate to the maximum. Stata 
+#Also does a itteration procedure, Maximum-likelihood estimators produce results by an 
+#iterative procedure. At the beginning of iteration k, there is some coefficient vector
+#bk. This coefficient vector can be combined with the model and data to produce a 
+#log-likelihood value Lk.The procedure then finds a b{k+1}, which produces a better 
+#(larger) log-likelihood value, L{k+1}. 
+```
+
+#Question 6 Part A
+```{r}
+#I would create a ordered logit or a ordered probit model.
+#See hand written work for the log likliood function
+```
+
+#Question 6 Part B
+```{r}
+d$adequacy = as.factor(d$adequacy)
+probit6 = polr(adequacy ~ alcohol + dmage + agesq + dmar + dmeduc + foreignb + tobacco + mblack + motherr + mhispan, method = "probit", data = d)
+summary(probit6)
+logit6 = polr(adequacy ~ alcohol + dmage + agesq + dmar + dmeduc + foreignb + tobacco + mblack + motherr + mhispan, method = "logistic", data = d)
+summary(logit6)
+#These coefficients are exactly as I would have expected. negative social cues will 
+#negatively effect the adequacy factor of being a good parent. 
+```
+
+#Question 6 Part C
+```{r}
+probitmfx(adequacy ~ 1 + alcohol + dmage + agesq + dmar + dmeduc + foreignb + tobacco + mblack + motherr + mhispan, data = d, atmean = FALSE)
+logitmfx(adequacy ~ 1 + alcohol + dmage + agesq + dmar + dmeduc + foreignb + tobacco + mblack + motherr + mhispan, data = d, atmean = FALSE)
+marginprobit6 = margins(glm(adequacy ~ alcohol + dmage + agesq + dmar + dmeduc + foreignb + tobacco + mblack + motherr + mhispan, family = binomial(link = "probit"), data = d), type = "response")
+marginlogit6 = margins(glm(adequacy ~ alcohol + dmage + agesq + dmar + dmeduc + foreignb + tobacco + mblack + motherr + mhispan, family = binomial(link = "logit"), data = d), type = "response")
+#The above outputs display the marginal/average effects for both the ordered probit and
+#ordered logit models. 
+```
+
+#Question 6 Part D
+```{r}
+x0 = c(0,25,625,1,12,0,1,0,0,0)
+beta = logit6$coefficients
+lgl = plogis(t(x0)%*%(beta))
+x00 = data.frame("constant"=1, "alcohol"= 0,"dmage"=25,"agesq"=625,"dmar"=1,"dmeduc"=12,"foreignb"=0, "tobacco"=1,"mblack"=0,"motherr"=0, "mhispan"=0)
+predict4d = predict(logit, x00, se.fit = TRUE, type = "response")
+CI = c(predict4d$fit - 1.96*predict4d$se.fit, predict4d$fit + 1.96*predict4d$se.fit)
+#94.4% chance of receiving adequate care given the various factors. 
+```
+
+
+
+
+

@@ -1,0 +1,140 @@
+---
+title: "Untitled"
+output: html_document
+---
+#Kyle Hafey
+#Garland Durham Final 
+#3.17.2016
+
+#Load Libraries
+```{r, echo = FALSE, results = 'hide', message = FALSE}
+library(TSA)
+library(astsa)
+library(forecast)
+```
+
+#Load Data
+```{r}
+data = read.csv("nino.csv", header = FALSE)
+#View(data)
+```
+
+#Problem 1
+```{r}
+#Create time series object. 
+nino = data$V1
+nino = ts(nino, start = 1950, frequency = 12)
+#View(nino)
+```
+
+#Problem 2
+```{r}
+ts.plot(nino, ylab = "Ocean Temperature(Celsius)", main = "El Nino Data")
+```
+
+#Problem 3
+```{r}
+#Here, I will do some tests to see if we have reason to believe we should transform the data at all. 
+mean(nino)
+#26.93
+sd(nino)
+#.9890
+hist(nino, main = "Histogram of El Nino Distribution", xlab = "Ocean Temperature(Celsius)")
+#Looks normally distributed
+acf(nino,50, main = "ACF of El Nino Data")
+#Autocorrelation - Possible Seasonality
+#Interpretation:
+#It appears as though the data is distributed normally when we look at the data. The original time series plot from problem 2 shows data that appears to be white noise. The data has a mean of about 26.93 degrees celsius which translates to about 80 degrees fahrenheit. Also, the standard deviation is small at around 0.98. The acf appears to have some seasonality so I will attempt to correct that during the modeling pricess.A Box-Cox transformation is useful when we want to make our data be normally distributed. In this case, when we look at the histogram of the distribution, we have reason to believe that the data is already normally distributed. We will not need a Box-Cox transformation. Differencing is another technique that we can use in order to make sure our data is stationary. A stationary time series is one whose statistical properties (mean, standard deviation, autocorrelation, etc) are constant over time. In this example, we can look at the plot from problem 2 and see that the data appears to look like a white noise process with a mean of 26.93 and a variance around 0.98. This data appears stationary, so we will not need to utilize differencing techniques. I will have to control for the auto correlation(Seasonality) in the acf later. Now that I have established that I will not need to utilize the Box-Cox transformations because our normality assumption holds and I will not need to utilize differencing because the stationarity assumption holds, I can go on with the Final. 
+```
+
+#Problem 4
+```{r}
+ts.plot(nino, ylab = "Ocean Temperature(Celsius)", main = "El Nino Data")
+lines(ksmooth(time(nino), nino, "normal", bandwidth = 1), lwd = 1, col = 2)
+lines(ksmooth(time(nino), nino, "normal", bandwidth = 2), lwd = 1, col = 3)
+lines(ksmooth(time(nino), nino, "normal", bandwidth = 4), lwd = 1, col = 4)
+#Here, I have displayed a few applications of the Kernel Smoother that is superimposed on a time series plot of our original data. I like the green Kernel Smoother in the plot. I will display the graph again but with only the one smoother on it. 
+ts.plot(nino, ylab = "Ocean Temperature(Celsius)", main = "El Nino Data With Optimal Smoother")
+lines(ksmooth(time(nino), nino, "normal", bandwidth = 2), lwd = 2, col = 3)
+#For the Kernel Smoother, I like the smoothing parameter: bandwidth = 2. This has allowed us to smoother the data. There appears to be some cycles in the data that are longer than 1 year. I will take a look at a periodogram of the data now. This helps to see seasonality. 
+```
+
+#Problem 5
+```{r}
+periodogram(nino, main = "El Nino Periodogram")
+#The periodogram shows that the longest cycle is around .18. Then we have big cycles around the .09 and the .03 areas. .18/.09 = 2. and .18/.025 = 7.2. This means there are large El Nino cycles every 2 - 7.2 years. This holds with what I know about El Nino and the fishing patterns off the coast of California.  
+```
+
+#Problem 6
+```{r}
+monthplot(nino, main = "Month Plot of El Nino Data", ylab = "Ocean Temperature(Celsius)", xlab = "Months")
+#In this plot, It appears that there are higher levels of variation In the very early months of the year(January and February), and the very late months of the year(October, November, and December). The hottest months of the year occur in April, May, and June. This makes sense for us, because California is currently experiencing an El Nino year. The rain is coming down harder and the ocean is warmer than it typically is. I see seasonality having an effect on the water temperature by month. 
+```
+
+#Problem 7
+```{r}
+#Construct Monthly Dummies
+monthlyfactor = factor(cycle(nino))
+m = model.matrix(nino ~ monthlyfactor)
+m = m[,2:12]
+January = c(rep(c(1,0,0,0,0,0,0,0,0,0,0,0),49),1,0,0,0,0,0,0,0,0,0)
+m = cbind(January,m)
+colnames(m) = c("January" , "February" , "March" ,"April", "May" , "June" , "July" ,"August", "September" ,"October", "November" ,"December")
+#View(m)
+#m will be my monthly dummies
+#Fit the linear model
+fit = lm(nino ~ 0 + m)
+summary(fit)
+ts.plot(fit$residuals,main = "Fit Residuals", ylab = "Residuals")
+acf(fit$residuals, 50, main = "ACF of Fit Residuals")
+#Here you said to fit the model with monthly dummies and nothingelse, so I left out the constantant so we won't have a full rank problem when we include all of the monthly dummies in the regression. The acf still displays a high level of auto correlation. Residuals still look stationary though! 
+```
+
+#Problem 8
+```{r}
+months = m[,1:11]
+#First, I will run auto.arima for a baseline of where to start,then I will investigte the models
+auto.arima(nino)
+auto.arima(nino,xreg = months)
+#Now, Play with some models. 
+#fit2 = sarima(nino,2,0,3,0,0,0,12)
+#AIC(fit2$fit)
+#fit3 = sarima(nino,2,0,3,0,0,0,12,xreg = months)
+#AIC(fit3$fit)
+#fit4 = sarima(nino,2,0,2,0,0,0,12)
+#AIC(fit4$fit)
+#fit5 = sarima(nino,2,0,2,0,0,0,12, xreg = months)
+#AIC(fit5$fit)
+#fit6 = sarima(nino, 2,0,0,0,0,0,12,xreg = months)
+#AIC(fit6$fit)
+#fit7 = sarima(nino,2,0,1,0,0,0,12,xreg = months)
+#AIC(fit7$fit)
+#fit8 = sarima(nino,3,0,3,0,0,0,12,xreg = months)
+#AIC(fit8$fit)
+#fit9 = sarima(nino,1,0,2,0,0,0,12,xreg = months)
+#AIC(fit9$fit)
+fit10 = sarima(nino,3,0,2,0,0,0,12,xreg = months)
+AIC(fit10$fit)
+BIC(fit10$fit)
+acf(fit10$fit$residuals, 50,main = "ACF of Fit10 Residuals")
+ts.plot(fit10$fit$residuals, main = "Fit10 Residuals", ylab = "Residuals")
+#When I preform my analysis I will drop the monthly dummy on December so that I do not have a full rank problem. I was originally running the models with all the dummies in the models and was getting errors (even when I clarified no.constant = TRUE....strange) So far, for all the models I ran, the initial predictions auto.arima were not correct. I was able to find lower AIC's by running different models. Auto.arima gave me a good place to start, but I found a better model, fit10. I liked the seasonal ar(3), ma(2) model the best. I ananyzed the models by looking at the time series plots of the residuals, the AIC's, the BIC's, and the diagnostic graphs that are displayed when a sarima model is utilized in R. I also plotted the acf of the residuals and noticed that the residuals still display seasonality, but the acf is almost insignificant. I recieved an AIC of 340.2465. In my analysis, I found that adding in monthly dummies to the model greatly helped make a more accurate model. This leads me to think that ocean temperature can be affected by what month of the year it is. These results make perfect sense in that the ocean is statistically warmer in the summer months and the late winter months when El Nino hits. 
+
+#I will comment out mostof my regressions so you dont end up with 30 pages of markdown that you dont want to look at. Forreference(and proof I did the problem), I will leave them commented out!
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

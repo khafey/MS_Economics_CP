@@ -1,0 +1,43 @@
+---
+title: "PS 5 - Durham"
+output: word_document
+---
+#Kyle Hafey
+#Problem set 5
+#Durham
+
+#Problem 3.6
+```{r}
+n = 1000
+x = rep(0, n)
+w = rnorm(n)
+x[1] = 0
+x[2] = 0
+for( i in 3:n){
+  x[i] = .9*x[i-2] + w[i]
+}
+acf(x)
+```
+
+#Problem 3.7
+#Part A
+```{r}
+ACFa = ARMAacf(ar=c(-1.6,-.64), ma=0, 10)
+plot(ACFa, type="h", xlab="lag")
+abline(h = 0)
+```
+#Problem 3.7
+#Part B
+```{r}
+ACFb = ARMAacf(ar=c(.4,.45), ma=0, 10)
+plot(ACFb, type="h", xlab="lag")
+abline(h = 0)
+```
+#Problem 3.7
+#Part C
+```{r}
+ACFc = ARMAacf(ar=c(1.2,-.85), ma=0, 10)
+plot(ACFc, type="h", xlab="lag")
+abline(h = 0)
+```
+

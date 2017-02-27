@@ -1,0 +1,224 @@
+---
+title: "PS4"
+output: 
+  word_document: 
+    fig_height: 4
+    fig_width: 6
+---
+#Question 2.6 
+##Part A 
+```{r}
+library(astsa)
+#E[xt] = b0 + b1T, which is not independent of time. Not stationary
+```
+##Part B
+```{r}
+#bo = 2
+#b1 = 4
+#t = 1:500
+#w = rnorm(t,0,1)
+#X = bo + b1*t + w
+#plot(X)
+#dx = diff(X)
+#m = mean(dx)
+#acf(dx, type = "covariance")
+#plot(dx)
+#abline(h = mean(dx), col = 2, lwd = 3)
+#Hence, we have proved this system is stationary.(View graph)
+```
+##Part C
+```{r}
+#wt = rnorm(500, 5, 1)
+#E[xt] = b0 + b1T + wt 
+#E[xt] = bo + b1T + 5, which is not independent of time. Not stationary
+#bo = 2
+#b1 = 4
+#t = 1:500
+#w = rnorm(500,5,1)
+#X = bo + b1*t + wt
+#dx = diff(X)
+#m = mean(dx)
+#acf(dx, type = "covariance")
+#plot(dx)
+#abline(h = mean(dx), col = 2, lwd = 3)
+#The system is still stationary, we get the same results as before.
+```
+
+#Question 2.8
+##Part A
+```{r}
+x = varve
+y = log(varve)
+plot(cbind(x, y))
+vv = data.frame(varve)
+h1 = vv[1:317,]
+var(h1)
+h2 = vv[318:634,]
+var(h2)
+#We see heteroskedasticity because the variance of the second half of 
+#the data is way higher than the variance in the first half. This can 
+#be seen in the graph as well. 
+#taking the log of x will smoothe out the data a bit and make the 
+#Variances constant over time. 
+hist(x)
+hist(y)
+#The distribution becomes nurmally distributed when the data is logged. 
+```
+##Part B
+```{r}
+plot(y)
+plot(gtemp)
+#Yes, there are periods of 100 years that go up and there are periods
+#of 100 years that go down. The two graphs match up at different points.
+```
+##Part C
+```{r}
+acf(y)
+#The covariance is highly correlated through time. This represents a 
+#cycle is present. What happens today depends on what happened yesterday
+```
+##Part D
+```{r}
+u = diff(y)
+plot(u)
+acf(u)
+#This creates a stationary function. The first difference is highly 
+#correlated with itself and stationary. 
+#This difference is in terms of change from yesterday to today. 
+#Differencing helps stabeise the mean of a time series by removing 
+#the change per level. This provides stationarity for the time series. 
+```
+##Part E
+```{r}
+#See work done by hand for verification
+```
+##Part F
+```{r}
+#See work for method of moments estimation. I got two estimates for
+#each variable. 
+#Theta = -2, -.5     
+#sigma = .2656, .0664
+```
+#Question 2.9
+##Part A
+```{r}
+dev.off()
+plot(soi)
+model = lm(soi ~ time(soi))
+detrend = soi - fitted(model)
+summary(model)
+plot(detrend)
+#There is a statistically significant relationship between the time of 
+#soi and the sea surface temperature. There is a significant trend in
+#the sea surface temperature.
+```
+##Part B
+```{r}
+library(TSA)
+plot(model$residuals)
+periodogram(model$residuals)
+#The major cycle shows strong concentrations of variance around 0.8, 
+#which shows a cycle at the anual cycle mark. 1/12 = .083
+#The minor cycle shows strong concentrations of variance around 0.25, 
+#which shows a cycle around the 4 year mark. 1/.25 = 4
+#This means that an el nino should occure on an annual frequency. 
+#With the el nino occuring approximetly every 4 years. 
+```
+#Question 2.11
+##Part A
+```{r}
+ts.plot(cbind(oil, gas), col = c(4,3))
+#par(mfrow = c(2,1))
+acf(oil)
+acf(gas)
+#dev.off()
+#Based on the graphs, I do not believe either of the data sets are 
+#stationary. it does not look like white noise or the moving average in 
+#figure 1.8
+```
+##Part B
+```{r}
+#par(mfrow = c(2,1))
+ts.plot(cbind(oil, gas), col = c(3,4))
+ts.plot(cbind(log(oil) ,log(gas)), col = c(3,4))
+plot(diff(log(gas)))
+plot(diff(log(oil)))
+#There is a bigger shock in 2005 for gas, while the shock for oil took 
+#place in 2009. 
+hist(oil)
+hist(diff(log(oil)))
+hist(gas)
+hist(diff(log(gas)))
+#dev.off()
+#Logs tend to smooth out graphs and make them normally distributed. 
+#in this case, the logged series tend to appear stationary. They have 
+#constant means, but the vairances differ. It may be best to use the 
+#logged data in this case. 
+```
+##Part C
+```{r}
+ts.plot(cbind(diff(log(oil)) ,diff(log(gas))), col = c(1,4) , lwd = c(1 ,1))
+acf(diff(log(oil)))
+acf(diff(log(gas)))
+#It appears as though there are cycles in the data. the pattern repeats every
+#two periods. There are a few outliers in the data. 
+```
+##Part D
+```{r}
+ccf(diff(log(gas)), diff(log(oil)))
+#There is a huge correlation in the beginning and then it follows some
+#cyclical behavior. 
+```
+##Part E
+```{r}
+lag2.plot(diff(log(gas)), diff(log(oil)), 3)
+#It appears as though the first period plot, without lags has some linear 
+#relationsjip. Other than the first period it appears as though the data 
+#points are clustered around 0. No relationship in the lags. 
+```
+##Part F
+###Part i
+```{r}
+poil = diff(log(oil))
+pgas = diff(log(gas))
+indi = ifelse(poil < 0, 0, 1)
+mess = ts.intersect(pgas, poil, poilL = lag(poil,-1), indi)
+fit <- lm(pgas~ poil + poilL + indi, data=mess)
+summary(fit)
+#There is small positive growth in gas prices based on oil prices today 
+#and oil prices over time(lagged oil prices)
+```
+###Part ii
+```{r}
+poil = diff(log(oil))
+pgas = diff(log(gas))
+indi = ifelse(poil < 0, 1, 0)
+mess = ts.intersect(pgas, poil, poilL = lag(poil,-1), indi)
+fit1 <- lm(pgas~ poil + poilL + indi, data=mess)
+summary(fit1)
+#The results are very similar but the intercept is slightly different and the 
+#coefficient associated with the indicator becomes negative. It shows the 
+#effect when oil prices are going down. We observed no or positive growth in 
+#the results in part i. These reuslts are consistent with our findings, and 
+#symmetric
+```
+###Part iii
+```{r}
+plot(fit$residuals)
+#plot(fit1$residuals)
+#The residuals are correlated around 0. The residuals are the same for 
+#both regressions. 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

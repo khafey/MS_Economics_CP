@@ -1,0 +1,89 @@
+---
+title: "Zambrano Problem Set 4"
+author: "Kyle Hafey"
+date: "5/23/2016"
+output: html_document
+---
+
+
+```{r,echo=FALSE}
+library(stats)
+library(copula)
+options(scipen = 999)
+```
+
+#Step 1
+
+
+```{r}
+data = read.csv("~/Desktop/R_Data/CDF.csv")
+hist(data[,1], main = "NPV PLAN A")
+
+plot(ecdf(data[,1]), xlab = "NPV", main = "CDF PLAN A")
+
+hist(data[,2], main = "NPV PLAN B")
+
+plot(ecdf(data[,2]), xlab = "NPV", main = "CDF PLAN B")
+```
+
+
+#Step 3
+
+
+```{r}
+hist(data[,3], main = "NPV PLAN C")
+
+plot(ecdf(data[,3]), xlab = "NPV", main = "CDF PLAN C")
+```
+
+#Step 4
+for this problem and problem 5 I believe you said not to do them until you lecture on them. I'll give it a shot anyway. 
+
+Risk aversion is defined as behavior that attempts to reduce uncertainty. If a manufacturer is risk averse, they will attempt to minimize the percent of the time that the NPV is negative. This will result in a lower range of NPV (less profits, and less losses). If a manufacturer is risk averse, they will choose to use Plan C. This plan (Plan C) results in less profits, less losses, and the lowest probability of a negative NPV. I dont know how to measure the risk aversion so I dont know how to take this problem further, but I feel like I understand the intuition behind the problem fairly well. 
+
+
+#Step 5
+```{r}
+#Loaded library above
+Copul = tCopula( param=c(0.5,0.25,.4),df = 2, dim = 3, dispstr = "un") 
+Copul
+#Set the distribution based on how how large the dirstibution can be. 50% greater than and less than the estimate
+distribution = mvdc(copula = Copul, margins=c("unif", "unif", "unif"), paramMargins = list(list(min = 150000, max = 450000), list(min = 300000, max = 900000),list(min = 450000, max = 1450000)))
+distribution
+
+value = rMvdc(10965,distribution)
+#Here, we should have close to the kendall rank correlation matrix, we will use this to create our demand estimates
+cor(value)
+#Drop valiues into a data frame for the demand estimates
+data1 = data.frame("Year_1" = value[,1],"Year_2" = value[,2], "Year_3" = value[,3])
+#View(data1)
+#Write the csv file to use in excel to redo the problem from earlier
+#write.csv(data1,"Zambranops4-5new.csv")
+
+```
+Here, we create the demand estiamtes based on the kendall rank correlations. Then I will use the data in Excel to redo problem 1-3. I dont know how to do problem 4. 
+
+#Plan A
+
+
+```{r}
+zamby = read.csv("~/Desktop/R_Data/zamby_5.csv")
+#PlanA
+hist(zamby[,1], main = "NPV PLAN A - Part 5")
+plot(ecdf(zamby[,1]), xlab = "NPV", main = "CDF PLAN A - Part 5")
+
+#Plan B
+hist(zamby[,2], main = "NPV PLAN B - Part 5")
+plot(ecdf(zamby[,2]), xlab = "NPV", main = "CDF PLAN B - Part 5")
+
+#Plan C
+hist(zamby[,3],main = "NPV PLAN C - Part 5")
+plot(ecdf(zamby[,3]), xlab = "NPV", main = "CDF PLAN C - Part 5")
+
+
+
+
+
+
+
+

@@ -1,0 +1,211 @@
+---
+title: "Teradata"
+output: html_document
+---
+
+#Teradata
+#Kyle Hafey
+
+
+```{r, echo = FALSE}
+options(scipen = 99999)
+library(MASS)
+library(psych)
+
+```
+
+
+
+#Question 1
+
+No we cannot trace specific people to adds. But, we can look at the twiter data and see that people are accessing the links. its safe to assume people are registering if we find a significant number of people are clicking the links.
+
+```{r}
+data = read.csv("~/Desktop/R_Data/postdec18.csv")
+#View(data)
+data = data[1:62,]
+sample = data[which(data$Register ==1),]
+#View(sample)
+sum(sample$engagements)
+.25*79
+```
+Here, we can see that on the social media source Twitter, 79 people clicked on (engaged) the twitter posts that contained the registration link. Assuming 50% of engagers accidently clicked the post, 25% of engagers decided not to register, and 25% of people actually registered, we are left with 19.75 or almost 20 people that register based on the advertisement. Take this into consideration that there are outher social meida sites where higherheros is running hteir ad compaigns(Facebook, linkedin), the number of people engaging the sites is much higher. 
+
+####Do same stuff for number 1, but for the facebook post data.
+```{r,warning=FALSE}
+data1 = read.csv("~/Desktop/R_Data/FBPOSTMASTER.csv")
+data1 = data1[1:1366,1:12]
+data1$Posted = as.Date(data1$Posted, format = "%m/%d/%Y" )
+data1$Message = as.character(data1$Post.Message)
+
+
+#Subset
+data1$test1 = c(rep(0,length(data1$Message)))
+data1$test2 = c(rep(0,length(data1$Message)))
+#View(data1)
+#This wont fucking work...
+for(i in 1:length(data1$Message)){
+  data1$test1[i] = grepl(".*Regist.*", data1$Message[i])
+  data1$test2[i] = grepl(".*regist.*", data1$Message[i])
+}
+
+for(i in 1:length(data1$Message)){
+  if(data1$test1[i] == 1){
+    data1$Registration[i] =1
+  }
+  if(data1$test2[i] == 1){
+    data1$Registration[i] = data1$Registration[i] + 1
+  }
+  if(data1$Registration[i] >=1){
+    data1$Registration[i] = 1
+  }
+}
+
+
+time = data1[1:11,]
+#View(time)
+link = time[which(time$Registration==1),]
+#View(link)
+
+totalreach = sum(link$Lifetime.Post.Total.Reach)
+totalreach
+totalimpressions = sum(link$Lifetime.Post.Total.Impressions)
+totalimpressions
+totalengagements = sum(link$Lifetime.Engaged.Users)
+totalengagements
+
+writethis = data.frame(data1[,1:2],data1[,4:13])
+#View(writethis)
+#write.csv(writethis, file = "FB_MASTER_FILE.csv")
+.25*133
+```
+The above results tell us that the 133 unique people are engaging the facebook posts that occured after december 18, 2015. We make sure that these posts contain a link to a registration page. Once again, assuming 50% of people accidently engage the link, and 25% of engagers decide not to register, and 25% of engagers actually register, we are left with 33.25, or roughly 33 people that actually register. 
+
+Based on these results, we can see the adds are working, but we are not able to trace specific registrants to the adds. We think this is the reason for the this question lines. If we could see who was clicking the links to register we would have a lot more information about who is registering and why they are registering. This would tell us a lot more information about what advertisements are working and how to make the advertisements more effective. Because we do not have the data for this specific problem, we will have to do some modeling and estimation to draw inferences about the success of the advertisements and how to improve them. 
+
+
+
+
+##Here, possibly get an estimate from hubspot for how many people register once they have engaged the ad.
+
+
+
+
+#Question 2
+```{r}
+#Here, I am playing with the hubspot advertising data
+data1 = read.csv("~/Desktop/R_Data/hubspot-social-media-export-01-08-16(1).csv")
+#View(data1)
+#Here, I will parse the data into only the registration campaign
+registration = data1[which(data1$Campaign == "Registration"),]
+#View(registration)
+
+#is clicks associated with campaigns
+model = lm(Clicks ~ Campaign, data = data1)
+summary(model)
+
+modeltest = lm(Clicks ~ 0 + Campaign + Channel, data = data1)
+summary(modeltest)
+
+#What happes if we look at an ordered probit
+data1$orderedclick = c(rep(0,length(data1$Campaign)))
+#View(data1)
+describe(data1$Clicks)
+for(i in 1:1746){
+  if(data1$Clicks[i] > 0 & data1$Clicks[i] < 11){
+    data1$orderedclick[i] = 1
+  }
+  if(data1$Clicks[i] > 10 & data1$Clicks[i] <21){
+    data1$orderedclick[i] = 2
+  }
+  if(data1$Clicks[i] > 20 & data1$Clicks[i] <31){
+    data1$orderedclick[i] = 3
+  }
+  if(data1$Clicks[i] > 30 & data1$Clicks[i] <41){
+    data1$orderedclick[i] = 4
+  }
+  if(data1$Clicks[i] > 40 & data1$Clicks[i] <51){
+    data1$orderedclick[i] = 5
+  }
+  else if(data1$Clicks[i] > 50 & data1$Clicks[i] <61){
+    data1$orderedclick[i] = 6
+  }
+}
+
+#Run an ordered probit
+data1$orderedclick = as.factor(data1$orderedclick)
+modelpr = polr(orderedclick ~ Campaign, method = c("probit"),data = data1)
+summary(modelpr)
+
+#Tests that didnt work out:
+#Supplementary models to look at later:
+#model1 = lm(Clicks ~ Campaign + Post12.18.2015 +Campaign*Post12.18.2015, data = data)
+#summary(model1)
+
+#model2 = lm(Clicks ~  Post12.18.2015 ,data = registration)
+#summary(model2)
+
+
+```
+From this model, it appears that the Registration Campaign leads to mode clicks. More people saw the advertisements and clicked to take them to the registration page. Additionally, we run an ordered probit. We created a ranking system based on the number of clicks an advertisement received. The ranking system is based on the summary statistics and is as follows: 0 if 0 clicks, 1 if 1-10 clicks, 2 if 11-20 clicks, 3 if 21-30 clicks, 4 if 31-40 clicks, 5 if 41-50 clicks, and 6 if 51-60 clicks. With ordered probit models we cannot say the size of the effect, but we can say tha magnitude. In this model we see that the Registration campaigns are associated with a positive number of clicks. We tried some additional models that utilize interaction terms and they did not produce statistically significant results so we decided to omit them, but the models can be see based onthe code in the above chunk. 
+
+
+#Question 2/3
+Analyze engagement, impressions, reach, and engagement rate of facebook post data to see if there is an increase or seasonality for facebook data:
+
+```{r}
+postweek = read.csv("/Users/kylehafey/Desktop/Teradata/postwk.csv")
+postweek$engagement_rate = postweek$engaged.users / postweek$impressions
+
+#View(postweek)
+
+
+plot(postweek$engagement_rate,type = "l",xlab = "Holiday",ylab = "Engagement Rate",main = "Facebook Engagement Rate Over Time",xaxt = "n")
+abline(v = c(10,22,28,49,52,75,83), lty = 3, col = 2)
+axis(1,at = c(10,22,28,49,75), c("9/11","M","I","P", "V"))
+lines(ksmooth(time(postweek$engagement_rate),postweek$engagement_rate,"normal", bandwidth = 5), lwd = 1, col = 3)
+#Here, M is memorial day, and in is independence day. The unlabeled days are christmas - non military holidays 
+
+plot(postweek$engaged.users,type = "l", xlab = "Holiday",ylab = "Engaged Users",main = "Facebook Engaged users over time", xaxt = "n")
+abline(v = c(45,49,70,75), lty = 3, col = 2)
+axis(1, at = c(45,49,70,75), c("m","p","a","v"))
+lines(ksmooth(time(postweek$engaged.users), postweek$engaged.users,"normal", bandwidth = 4), lwd = 1, col = 3)
+#M is marine core birthdat, p is presidents day
+
+plot(postweek$Total.reach ,type = "l", xlab = "Holiday",ylab = "Reach",main = "Facebook Total Reach Over Time", xaxt = "n")
+abline(v = c(45,49,70,75), lty = 3, col = 2)
+axis(1, at = c(45,49,70,75), c("m","p","a","v"))
+lines(ksmooth(time(postweek$Total.reach ), postweek$Total.reach ,"normal", bandwidth = 4), lwd = 1, col = 3)
+#m is marine core birthday, p is presidents day, v is veterans day, a is airforce birthday
+
+```
+
+Post level data:
+Here, there appears to be seasonal spikes in the data. Now, I would like to simplify it and figure out where those spikes are and why they are occuring.
+
+After reviewing our graphs and facebook posts, seasonal spikes occur when other companies do shout-outs for higher heros. The social media engagement rate and total engagements spike, but this does not necessarily mean the social media presence effects registrations or donations. We cant even say if social media presence grew. We jsut see spikes where shoutouts occured. 
+
+Here, people like the page after a shout out, then they leave. Reach remaines flat. This basically means higher heros isnt successful at keeping facebook likers to get their messaage out there. They get likers after a larger company gives them a shout out, then they lose the follorers and the reach they gained. 
+
+Do the same for weekly twitter data
+```{r}
+data = read.csv("/Users/kylehafey/Desktop/R_Data/TwitterWeek.csv")
+#View(data)
+#Plot Twitter Engagement rate 
+plot(data$Engagement.Rate,type = "l",xlab = "Holiday",ylab = "Engagement Rate",main = "Twitter Engagement Rate Over Time",xaxt = "n")
+abline(v = c(11,18,36,53,68), lty = 3, col = 2)
+axis(1,at = c(11,18,36,53), c("p","r","f","9/11"))
+lines(ksmooth(time(data$Engagement.Rate),data$Engagement.Rate,"normal", bandwidth = 5), lwd = 1, col = 3)
+
+#p is presidents day. r registration links - random people retweeting that icreased engagement. blank is christmas af armed forces day 
+#after armed forces day we see random peaks, some military holidays included but no real spikes
+
+
+
+
+```
+
+
+
+
+

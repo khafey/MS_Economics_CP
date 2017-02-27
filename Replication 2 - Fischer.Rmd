@@ -1,0 +1,308 @@
+---
+title: "Replication 2 - Fischer"
+author: "Kyle Hafey & Hunter Garfield"
+date: " May 9, 2016"
+output: html_document
+---
+
+#Load libraries
+```{r}
+library(foreign)
+library(AER)
+library(stargazer)
+
+```
+
+
+#Question 1
+```{r}
+#Here I had to load the data into stata and use the command saveold to save it to a new file. The R command read.dta does not recognize stata 13 or 14 files so I saved it as a stata 12 file and then loaded it into R. 
+data = read.dta("~/Desktop/R_Data/replication2data.dta")
+cohort1 = data[which(data$yob <= 39 & data$yob >= 30),]
+cohort2 = data[which(data$yob <= 49 & data$yob >= 40),]
+options(scipen=999)
+#Make table for cohort1
+c1mean = sapply(cohort1, mean)
+c1sd = sapply(cohort1,sd)
+c1min = sapply(cohort1,min)
+c1max = sapply(cohort1,max)
+summary1 = data.frame(c1mean,c1sd,c1min,c1max)
+colnames(summary1) = c("mean", "sd", "min", "max")
+(summary1)
+#Make table for cohort2
+c2mean = sapply(cohort2, mean)
+c2sd = sapply(cohort2,sd)
+c2min = sapply(cohort2,min)
+c2max = sapply(cohort2,max)
+summary2 = data.frame(c2mean,c2sd,c2min,c2max)
+colnames(summary2) = c("mean", "sd", "min", "max")
+(summary2)
+```
+
+Cohort1 will be births between 1930 and 1939, and cohort2 will be births between 1940 and 1949. Hence, cohort2 will contain younger males. It appears that younger males have more education. Younger males make less money, and are less likely to be married. This makes sense because they are just at an earlier stage of their life cycles. 
+
+#Question 2
+```{r}
+d = data
+dc1 = d[d$yob<=39,]
+dc1 = dc1[dc1$yob>=30,]
+dc2 = d[d$yob>39,]
+dc2 = dc2[dc2$yob<=49,]
+dc1e = dc1[,3]
+dc2e = dc2[,3]
+i = min(dc1$ageq)
+while(i <=max(dc1$ageq)){
+  edm2 = mean(d[d$ageq == i-.5,3])
+  edm1 = mean(d[d$ageq == i-.25,3])
+  edp1 = mean(d[d$ageq == i+.25,3])
+  edp2 = mean(d[d$ageq == i+.5,3])
+  MA = (edm2+edm1+edp1+edp2)/4
+  
+  dc1[dc1$ageq==i,3] = dc1[dc1$ageq==i,3] - MA
+  i = i+.25
+}
+
+i = min(dc2$ageq)
+while(i<=max(dc2$ageq)){
+  edm2 = mean(d[d$ageq == i-.5,3])
+  edm1 = mean(d[d$ageq == i-.25,3])
+  edp1 = mean(d[d$ageq == i+.25,3])
+  edp2 = mean(d[d$ageq == i+.5,3])
+  MA = (edm2+edm1+edp1+edp2)/4
+  
+  dc2[dc2$ageq==i,3] = dc2[dc2$ageq==i,3] - MA
+  i = i+.25
+}
+dc1[,15] = dc1e
+dc2[,15] = dc2e
+dc1 = na.omit(dc1)
+dc2 = na.omit(dc2)
+
+```
+
+```{r}
+#here we modified the data set in another script and load in the new data set from a different csv file. 
+dfig = read.csv("~/Desktop/R_Data/p2dat.csv")
+qmeans = c()
+qhold = c()
+dfig$ageq = as.numeric(dfig$ageq)
+j = min(dfig$ageq)
+i = 1
+while(j<=max(dfig$ageq)){
+  qmeans[i] = mean(dfig$educ[dfig$ageq==j])
+  qhold[i] = j
+  j=j+.25
+  i=i+1
+}
+qmat = cbind(qhold,qmeans)
+
+plot(qmat[1:37,],type = "h",lwd= 2,col = c(4,1,2,3), xlim = c(1930,1939))
+abline(h = 0)
+legend("bottomleft",c("Q1","Q2","Q3","Q4"), lty = c(1,1,1,1),lwd = rep(2,4),col = c(1,2,3,4))
+plot(qmat[38:76,],type="h",lwd= 2,col = c(1,2,3,4), xlim = c(1940, 1949))
+abline(h = 0)
+legend("bottomleft",c("Q1","Q2","Q3","Q4"), lty = c(1,1,1,1),lwd = rep(2,4),col = c(1,2,3,4))
+```
+
+It appears that for the 1930-1939 cohort there is not a whole lot of seasonality in the data, however we can see that in the later years those born in quarters 2 and 3 seem to acheive slightly more education on average than those in quarters 1 and 4. Looking at the cohort from 1940-1949, we can see that individuals born in quarters 1 and 4 received significantly less education on average (after applying the MA filter) than individuals that were born in quarters 2 and 3. This effect is particularly strong for individuals that were born in quarter 1, with no positive values and negative values at every sampling year that are large in magnitude. Angrist and Krueger believe that this difference has to do with differences in compulsory schooling laws which altered when students were allowed to drop out of school, depending on when they were born. They argue that since students born in the first quarter were were allowed to drop out of school in certain states and weren't allowed to in others, we see them drop out when they are able. This argument does seem pretty convincing, especially when supported by the data. It seems rational to think that  individuals who are given the choice about whether or not to stay in school at that age would opt not to do so due to a wide range of social factors (e.g. desire to enter labor force, less emphasis on importance of school).
+
+#Question 3
+```{r}
+#code cohort 3
+cohort3 = data[which(data$yob <= 1929 & data$yob >= 1920),]
+#get mean educ by education level
+mean1 = c()
+for(i in 1:4){
+  sample1 = cohort1[which(cohort1$qob == i),]
+  mean1[i] = mean(sample1$educ)
+}
+
+mean2 = c()
+for(i in 1:4){
+  sample2 = cohort2[which(cohort2$qob == i),]
+  mean2[i] = mean(sample2$educ)
+}
+
+mean3 = c()
+for(i in 1:4){
+  sample3 = cohort3[which(cohort3$qob == i),]
+  mean3[i] = mean(sample3$educ)
+}
+
+
+plot(mean1, type = "l", col = 2, ylim = c(9.5,14), ylab = "Cohort Mean Education", xlab = "Quarter of Birth", main = "Mean Education by Decade" )
+lines(mean2, col = 3)
+lines(mean3, col = 4)
+legend("bottomright",c("20's","30's", "40's"), lty = c(1,1,1),col = c(4,2,3))
+```
+
+
+#Question 4
+```{r}
+data$agesq = data$age^2
+model = lm(lwklywage ~ age + agesq + educ ,data = data)
+summary(model)
+```
+It appears the returns to education are positive from this regression. I do not think this is a causal effect because there is some omitted variable bias here. This is a very simple model that does not accound for skill, ability, effort, career/industry or many other factors that contribute to wages. These factores are contained in the error term. Here, education would be correlated with the error term and the depemdent variable so we have an endogeneity problem and cannot establish a causal effect. We should look for a instrument for education.  
+
+#Question 5
+```{r}
+Outcome_Variable = c("Total Years of Education", " "," ","", "High School Graduate", " "," ","", "College Graduate", " " ," ","")
+Birth_Cohort = c("1930 - 1939","", "1940 - 1949","", "1930 - 1939","", "1940 - 1949","", "1930 - 1939","", "1940 - 1949","")
+
+#dc1 is the 1930's with moving average
+#Make Quarterly dummies
+q11 = ifelse(dc1$qob ==1,1,0)
+q12 = ifelse(dc1$qob ==2,1,0)
+q13 = ifelse(dc1$qob ==3,1,0)
+model1 = lm(educ ~ q11 +q12+q13 , data = dc1)
+summary(model1)
+
+dc1$hsgrad = ifelse(dc1[,15]>=12,1,0)
+model12 = lm(hsgrad ~ q11 + q12 + q13,data = dc1)
+summary(model12)
+
+dc1$collegegrad = ifelse(dc1[,15]>=16,1,0)
+model13 = lm(collegegrad ~ q11 + q12 + q13 ,data = dc1)
+summary(model13)
+#dc2 is the 1940's with moving average
+#Make quartely dummies
+q21 = ifelse(dc2$qob ==1,1,0)
+q22 = ifelse(dc2$qob ==2,1,0)
+q23 = ifelse(dc2$qob ==3,1,0)
+q24 = ifelse(dc2$qob ==4,1,0)
+model2 = lm(educ ~ q21 + q22 + q23, data = dc2)
+summary(model2)
+
+dc2$hsgrad = ifelse(dc2[,15]>=12,1,0)
+model22 = lm(hsgrad ~ q21 + q22 + q23,data = dc2)
+summary(model22)
+
+dc2$collegegrad = ifelse(dc2[,15]>=16,1,0)
+model23 = lm(collegegrad ~ q21 + q22 + q23 ,data = dc2)
+summary(model23)
+
+#Hard code values from the regression output above
+MEANS = c(mean(dc1[,15]),"", mean(dc2[,15]),"", mean(dc1$hsgrad), "",mean(dc2$hsgrad), "", mean(dc1$collegegrad), "", mean(dc2$collegegrad), "" )
+Q1effect = c(-0.12429, 0.01666, -0.085457, 0.012519, -0.014869, 0.002133, -0.013311, 0.001438,-0.0049826, 0.0021646, -0.0064036, 0.0019201)
+Q2effect = c(-0.086, 0.01675, -0.034832, 0.012599, -0.012937, 0.002145, -0.009212, 0.001447, 0.0015041, 0.0021767,0.0008341,0.0019323)
+Q3effect = c(-0.01489, 0.01596, -0.018839, 0.012602, -0.004971, 0.002044, -0.004906, 0.001448, -0.0006987, 0.0020740,-0.0033164,0.0019328)
+Fstat = c(25.12, 0.0001, 17.36, 0.0001, 21.29, 0.0001,  31.58, 0.0001, 3.148, 0.02395,6.052, 0.0004 )
+
+#Put it all together in a table
+Table1 = data.frame(Outcome_Variable, Birth_Cohort,MEANS,Q1effect,Q2effect,Q3effect,Fstat)
+(Table1)
+```
+The F statistic tests that all of the coefficients in the regression are equal to 0. Essentiall, they tell us if the regressions are usless or not. In our output, all of the regressions are significant at the 95% significance level. 
+Relative to being born in the fourth quarter, if someone is born in quarter 1 or 3 they are less likely to graduate college. Being born in the fourth quarter makes you slightly more likely to graduate college,  relative to the fourth quarter. These estimates are are very small and the results are simmilar across both cohorts of individuals (born in the 30's and 40's).  
+Instrumental varibales are used to estimate causal effects in econometrics. For an instrument to be valid it must: 
+1. Be correlated with the endogenous explanatory variables. 
+2. Not be correlated with the error term in the regression (cannot suffer from the same problem that the instrument is correcting). 
+Specifically, quarter of birth will be a valid instrument for education if it is correlated with the dependent variable (log wages), but it is not correlated with the error term. 
+
+
+#Question 6
+```{r}
+#Cohort 1
+dc1 = d[d$yob<=39,]
+dc1 = dc1[dc1$yob>=30,]
+dc1 = na.omit(dc1)
+
+mlw30q1 = mean(dc1[dc1$qob ==1,4])
+med30q1 = mean(dc1[dc1$qob ==1,3])
+mlw30qs = mean(dc1[dc1$qob !=1,4])
+med30qs = mean(dc1[dc1$qob !=1,3])
+dif1 = mlw30q1-mlw30qs
+dif2 = med30q1-med30qs
+wald1 = dif1/dif2
+
+fit1 = lm(lwklywage~educ,data = dc1)
+
+tab = matrix(nrow = 4,ncol = 3)
+tab[1,1] = mlw30q1
+tab[1,2] = mlw30qs
+tab[1,3] = dif1
+tab[2,1] = med30q1
+tab[2,2] = med30qs
+tab[2,3] = dif2
+tab[3,3] = wald1
+tab[4,3] = fit1$coefficients[2]
+colnames(tab) = c(">Born in Q1",">Born in Q2,Q3,Q4",">Difference")
+rownames(tab) = c("log wkly wage","education","Wald est of return to ed.","OLS")
+```
+```{r,echo=F,results='asis'}
+stargazer(tab,type = "html")
+
+```
+The Wald estimate in the table above differs from the OLS estimate in that it can viewed as a consistent estimate provided that the season of birth indicator used issn't correlated with attributes that may be included in the error term of estimated earnings. The fact that this estimate is higher than the corresponding OLS estimate indicates that the true return to education may be higher than the "naive" one that we calculate using OLS. We didn't include our code for the next table because it was calculated in the same way for the younger cohort.
+```{r,echo=FALSE}
+dc2 = d[d$yob>=40,]
+dc2 = dc2[dc2$yob<=49,]
+dc2 = na.omit(dc2)
+
+mlw30q1 = mean(dc2[dc2$qob ==1,4])
+med30q1 = mean(dc2[dc2$qob ==1,3])
+mlw30qs = mean(dc2[dc2$qob !=1,4])
+med30qs = mean(dc2[dc2$qob !=1,3])
+dif1 = mlw30q1-mlw30qs
+dif2 = med30q1-med30qs
+wald1 = dif1/dif2
+
+fit1 = lm(lwklywage~educ,data = dc2)
+
+tab = matrix(nrow = 4,ncol = 3)
+tab[1,1] = mlw30q1
+tab[1,2] = mlw30qs
+tab[1,3] = dif1
+tab[2,1] = med30q1
+tab[2,2] = med30qs
+tab[2,3] = dif2
+tab[3,3] = wald1
+tab[4,3] = fit1$coefficients[2]
+colnames(tab) = c(">Born in Q1",">Born in Q2,Q3,Q4",">Difference")
+rownames(tab) = c("log wkly wage","education","Wald est of return to ed.","OLS")
+```
+```{r,echo=F,results='asis'}
+stargazer(tab,type = "html")
+```
+The Wald estimate for the younger cohort (born 1940-1949) is much smaller than the one produced for the 1930-1939 cohort and is not statistically distinguishable from zero. This is surprising given the OLS estimate is positive and statistically different from zero. Clearly this is a dramatic jump from the Wald estimate for the 1930-1939 cohort. Essentially, our estimates are telling us that the individuals born in Q1 in the second cohort had earnings that were more well aligned with those born in Q2,Q3, and Q4 even though the difference in education between these groups was roughly the same.
+
+#Question 7
+```{r}
+dc1 = d[d$yob<=39,]
+dc1 = dc1[dc1$yob>=30,]
+
+dc1$ageq = dc1$ageq - 1900
+age2 = dc1$ageq^2
+dc1 = cbind(dc1,age2)
+
+fit1 = lm(lwklywage~educ+factor(yob), data=dc1)
+fit2 = ivreg(lwklywage~educ+factor(yob)|factor(yob)*factor(qob),data = dc1)
+fit3 = lm(lwklywage~educ+ageq+age2+factor(yob),data=dc1)
+fit4 = ivreg(lwklywage~educ+ageq+age2+factor(yob)|factor(yob)*factor(qob),data=dc1)
+
+tab = matrix(nrow = 6,ncol = 4)
+tab[1:2,1] = c(fit1$coefficients[2],coef(summary(fit1))[2,2]) 
+tab[1:2,2] = c(fit2$coefficients[2],coef(summary(fit2))[2,2])
+tab[1:6,3] = c(fit3$coefficients[2],coef(summary(fit3))[2,2],fit3$coefficients[3],coef(summary(fit3))[3,2],fit3$coefficients[4],coef(summary(fit3))[4,2])
+tab[1:6,4] = c(fit4$coefficients[2],coef(summary(fit4))[2,2],fit4$coefficients[3],coef(summary(fit4))[3,2],fit4$coefficients[4],coef(summary(fit4))[4,2])
+
+rownames(tab) = c("Years of Ed.","se","Age","se","Age Squared","se")
+colnames(tab) = c(">OLS(1)",">2SLS(1)","OLS(2)","2SLS(2)")
+
+```
+```{r,echo = F,results='asis'}
+stargazer(tab, type="html")
+```
+The results from the 2SLS regression are slightly lower than those reported by the Wald test in problem 6 (.089 vs. .102). We prefer these estimates to the ones derived from the Wald test because they are more efficient and 2SLS allows us to account for trends in earnings that may be related to age (and other covariates not included in this case).
+
+
+
+
+#Question 8
+A Regression Discontinuity Design (RDD) Is a method used in econometrics to establish a causal effect by analyzing a cutoff below which and above which an intervention occured. One can anlyze observations on both sides of the threshold/intervention to establish a causal effect, assuming the two groups are similar near the cutoff point. Sometimes an IV can be abstract to think about and not always effective. Instrumental variables are subject to a lot of harsh assumptions aswell. One must assume the instrument is exogenously generated as random. Such an assumption is difficult to justify. The RDD lets one easily track trends in data. The RDD model is possibly more credible than other natural experiment strategies because they isolate treatment variation thats almost as good as randomized experiments. In a world where your models are only as good as your assumption, the RDD stands out as the better model. A negative of the RDD modelis that it provides super local effects. The results translate to those that fall close to the intervention point. Also, if the two groups were not similar going into the intervention, RDD does not necessarily do a good job at estimating causal effects. 
+
+
+#Question 9
+Philip Oreopoulos wrote the paper: The Compelling Effects of Compulsory Schooling: Evidence from Canada in 2006. According to Oreopolis the only effect you are really measuring with an IV is the effect on people that change their behavior due to the instrumental variable, not the full population, or even a realistic subset. The instruments also only usually effect fewer than 10% of the population exposed to them and lead to inflated treatment effects. Oreopolis thinks his IV is better because the IV's that he uses effect almost half the population. This gives a good estimate of the Average Treatment Effect, or atleast a better estimate than previous literature. 
+

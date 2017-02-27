@@ -1,0 +1,263 @@
+---
+title: "Untitled"
+output: pdf_document
+---
+#Kyle Hafey 
+#3.13.2016
+#Flores Final
+
+#Libraries
+```{r}
+library(foreign)
+library(MatchIt)
+library(base)
+library(Matching)
+library(reshape2)
+```
+
+#Load Data
+```{r}
+data = read.dta("paeco526_W16_final.dta")
+#View(data)
+```
+
+#Question 1
+```{r}
+fit = lm(dbirwt ~ tobacco, data = data)
+summary(fit)
+fit1 = lm(dbirwt ~ tobacco + dmage + dmage2 + dmeduc + dmar + mblack + mhispan + motherr + foreignb + dfage + dfeduc + fblack + fhispan + fotherr + alcohol + drink + tripre0 + tripre2 + tripre3 + nprevist + adequac2 + adequac3 + first + dlivord + disllb + pre4000 + plural + diabete + anemia + cardiac + chyper, data = data)
+summary(fit1)
+#The ATE in both regressions is just the coefficient on the tobacco #term. In the first regression, tobacco has an ATE of -266.029. 
+#In the larger regression that controls for the other 30 covariates, #the ATE is -231.97645 
+```
+
+#Question 2
+```{r}
+#Creating the compare groups function
+compareGroups <- function(dat, Group){
+  require(reshape2)
+  #compute group means, SD, and t-tests
+  tval <- pval <- num <- NA
+  for (i in 1:ncol(dat)){
+    num[i] <- is.numeric(dat[,i]) #figure out which columns are numeric
+    #run t-tests for them
+    if(is.numeric(dat[,i])){
+      x <- t.test(dat[,i] ~ dat[,Group], data=dat)
+      tval[i] <- x$statistic
+      pval[i] <- format.pval(x$p.value, digits=3, eps=0.0001)
+    }
+  }
+  tt <- data.frame(t=tval[num], p=pval[num])
+  #get means and SD
+  M <- aggregate(dat[, num], list(dat[,Group]), mean, na.rm=T)
+  Mx <- melt(M, id="Group.1")
+  Mg <- dcast(Mx, variable ~ Group.1)
+  SD <- aggregate(dat[, num], list(dat[,Group]), sd, na.rm=T)
+  SDx <- melt(SD, id="Group.1")
+  g <- merge(Mg, dcast(SDx, variable ~ Group.1), by="variable", sort=F, suffixes = c(".M",".SD"))
+  
+  ##get group sizes
+  GroupSize <- data.frame("N", t(aggregate(dat[, Group], list(dat[, Group]), length)[,2]), NA, NA)
+  colnames(GroupSize) <- colnames(g)
+  
+  #combine for output
+  GroupCompare <- cbind(rbind(GroupSize, g), rbind(c(NA, NA), tt))
+  return(GroupCompare)
+}
+data$tobacco = as.factor(data$tobacco)
+table = compareGroups(data, 'tobacco')
+options(scipen=999)
+table$Significant = c(rep(""))
+table$p = c(NA, .0001, .0001, .307, .000384, .0001, .0001, .0001, .51, .0001 , .0001, .0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.0001,.557,.0001)
+for(i in 2:32){
+  if(table[i,7] < .05){
+    table[i,8] = "*"
+  } 
+  if(table[i,7] > .05){
+    table[i,8] = ""
+  }
+}
+colnames(table) = c("Variable", "Non-Smoker Mean", "Smoker Mean", "Non-Smoker Standard Deviation", "Smoker Standard Deviation", "Test Statistic", "P-Value", "Significant")
+table$Difference = table$`Non-Smoker Mean`- table$`Smoker Mean`
+table = data.frame(table$Variable, table$`Non-Smoker Mean`, table$`Smoker Mean`, table$Difference, table$`Non-Smoker Standard Deviation`, table$`Smoker Standard Deviation`, table$`Test Statistic`, table$`P-Value`,table$Significant)
+colnames(table) = c("Variable", "Non-Smoker Mean", "Smoker Mean", "Difference", "Non-Smoker Standard Deviation", "Smoker Standard Deviation", "Test Statistic", "P-Value", "Significant")
+table
+#In this example, the table is called "table".The only variables #that are not statistically significant are the coefficients #associated with Cardiac, Diabetes and plural. All of the other #covariates are statistically significant. the Treatment group #contains 17,421 observations and the Control group contains 82,579 #observations. For many covariates, the differences between the #covariates in the treatment group versus the control group are #statistically significant. The groups are very comparable. Smokers #definitely make poorer decisions while they are pregnant, but we #can hold these decisions constant in our covariates. Im sure there #are some confounders that we do not observe that are left out of #the sample. I do not think we will recieve an unbiased estimator of #the ATE by running a simple linear regression. We are probably #missing some covariates from the model that we can call omitted #varible bias. Also, our sampling selection was a little funky so we #shoud try some other models in order to find an accurate causal #affect or ATE.
+```
+
+#Question 3
+```{r}
+#Propensity scores represent the conditional probability of #receiving the treatment. These can be used in order to simulate a #natural experiment. Propensity scores are used in sophisticated #models that adjust for the differences in the covariates. #Propensity score matching can be used as a method to reduce the #bias in the estimation of treatment effects with observational data #sets. In this example, we observe whether or not a mother smokes #tobacco and what happens to the birth weight of the baby. We want #to find the average treatment effect of smoking tobacco on the #childs birth weight. The ATE is useful to estimate what the effects #would be if the treatment was randomely assigned to the sample #population. The key assumption is that there are no confounders in #the model. We must have an adequate control group and treatment #group for the model to work. The best way for this assumption to #hold is for the model to be unconfoundedness.This means that the #assignemnt ot the treatment is independent of the outcomes, #conditional on all the other covariates. In this example, the #decision to smoke should be independent of birth weight, #conditional on all the other covariates we included in the model. #The propensity score matching methods do not control for omitted #variable bias. Propensity score matching is more efficient than #matching on all the other covariates.The results should be more #efficient than a general linear regression.   
+```
+
+#Question 4
+```{r}
+fit2 = glm(tobacco ~ dmage + dmage2 + dmeduc + dmar + mblack + mhispan + motherr + foreignb + dfage + dfeduc + fblack + fhispan + fotherr + alcohol + drink + tripre0 + tripre2 + tripre3 + nprevist + adequac2 + adequac3 + first + dlivord + disllb + pre4000 + plural + diabete + anemia + cardiac + chyper, data = data, family = binomial(link = "logit"))
+summary(fit2)
+pscorehat = fit2$fitted.values
+data$Pscore = pscorehat
+#View(data)
+```
+
+#Question 5
+```{r}
+data[,18] = as.numeric(data[,18])
+#View(data)
+data[,18] = data[,18] - 1
+#Subset Data
+smokers = data[which(data[,18] == 1),]
+smokerpscore = smokers[,33]
+nonsmokers = data[which(data[,18]==0),]
+nonsmokerpscore = nonsmokers[,33]
+hist(smokerpscore)
+hist(nonsmokerpscore)
+par(mfrow=c(1, 2))
+hist(smokerpscore)
+hist(nonsmokerpscore)
+summary(smokers)
+summary(nonsmokers)
+#Here we can see the two histograms of the pscores side by side. 
+#This helps us visualize how we will cut the data later in the 
+#problem. We will take the minimum of the maximum and the maximum 
+#of the minimum so that we are left with the overlapping data. The
+#graphs are pretty comparable. The p score of smokers has a larger 
+#right tail and a larger peak than the pscores for the nonsmokers.
+#The non smokers pscores tend to peak almost immediatly so there is 
+#almost no left tail. For smokers, alcohol consumption is higher on
+#average, anemia rats are higher on average, and the cardiac index 
+#is higher on average. Also, the birth weight is lower for smokers.
+#The bad decisions smokers make reflect the other covariates as #well. 
+```
+
+#Question 6
+```{r}
+dropbelow = max(min(smokers$Pscore),min(nonsmokers$Pscore))
+dropabove = min(max(smokers$Pscore),max(nonsmokers$Pscore))
+#View(data)
+newdata = data.frame()
+middle = data[-(which(data[,33] <= dropbelow)),]
+middlee = middle[-(which(data[,33] >=  dropabove)),]
+newdata = middlee
+#We dropped 285 people from the dataset by imposing the min max and
+#max min rule. We wanted to drop the minimum of the maximum and the
+#maximum of the minimum. Essentially, we wanted to put the 
+#histograms from question 5 on top of eachother and take only the 
+#areas that overlapped. This should give us more accurate #estimators.We are no longer estimating the population ATE. Now we #are estimating the ATT or the average treatment effect on the #treated individuals. 
+```
+
+#Question 7
+```{r}
+#From here on out we will only work with newdata data
+newdata$Weights = c(rep(""))
+for(i in 1:99715){
+  if(newdata[i,18] == 1){
+  newdata[i,34] = 1/newdata[i,33]  
+  }
+  if(newdata[i,18] == 0){
+    newdata[i,34] = 1/(1-newdata[i,33])
+  }
+}
+newdata$Weights = as.numeric(newdata$Weights)
+newdata = cbind(newdata[,1:4]*newdata[,34], "dbirwt" = newdata[,5], newdata[,6:32]*newdata[,34], newdata[,33:34])
+#View(newdata)
+tabledata = newdata[,1:32]
+treatment = tabledata[which(tabledata[,18] > 0),]
+treatment$factor = c(rep(1))
+control = tabledata[which(tabledata[,18] == 0),]
+control$factor = c(rep(0))
+tabledata = rbind(treatment, control)
+tabledata$factor = as.factor(tabledata$factor)
+#View(tabledata)
+table7 = compareGroups(tabledata, "factor")
+rep = c(rep("*",32))
+table7$significant = c("NA",rep)
+colnames(table7) = c("Variable", "Non-Smoker Mean", "Smoker Mean", "Non-Smoker Standard Deviation", "Smoker Standard Deviation", "Test Statistic", "P-Value", "Significant")
+table7$Difference = table7$`Non-Smoker Mean`- table7$`Smoker Mean`
+table7 = data.frame(table7$Variable, table7$`Non-Smoker Mean`, table7$`Smoker Mean`, table7$Difference, table7$`Non-Smoker Standard Deviation`, table7$`Smoker Standard Deviation`, table7$`Test Statistic`, table7$`P-Value`,table7$Significant)
+colnames(table7) = c("Variable", "Non-Smoker Mean", "Smoker Mean", "Difference", "Non-Smoker Standard Deviation", "Smoker Standard Deviation", "Test Statistic", "P-Value", "Significant")
+table7
+#Now, in this problem we have table 7 as the results. In this 
+#problem, the differences are smaller than when we compare them to
+#the table in problem 2. Also, all of the covariates are 
+#statistically significant. The weighted propensity scores really 
+#help to reduce the differences and make the covariates 
+#statistically significant. Really, what it is doing is balancing 
+#the differences between the control group and the treatment group 
+#by remobing the observations that do not overlap. 
+```
+
+#Question 8
+```{r}
+Q8 = newdata[,1:33]
+treatment8 = Q8[which(Q8[,18] > 0),]
+treatment8$factor = c(rep(1))
+control8 = Q8[which(Q8[,18] == 0),]
+control8$factor = c(rep(0))
+Q8 = rbind(treatment8, control8)
+Q8$factor = as.factor(Q8$factor)
+Q8$logical = ifelse(Q8$factor == 1,TRUE,FALSE)
+#View(Q8)
+fit3 = Match(Q8$dbirwt, Q8$logical, Q8$Pscore,version = "fast", ties = FALSE )
+summary(fit3)
+#This model estimates the average treatment effect(ATE) as -232.43. 
+#for this problem, each time we run the model we will get a 
+#different estimate but it should be fairly similar. The drawback 
+#of matching is that when we include a lot of covariates is it very
+#computationally intensive and it can take a long time to match all
+#the covariates. The more covariates we include, the harder it is 
+#to match the observations. 
+```
+
+#Question 9
+```{r}
+middlee$Weights = (middlee$tobacco/(middlee$Pscore) + (1-middlee$tobacco)/(1-middlee$Pscore))
+#View(middlee)
+fit4 = lm(dbirwt ~ tobacco, weights = Weights, data = middlee)
+summary(fit4)
+#This model estimates the ATE as -232.39
+```
+
+#Question 10
+```{r}
+fit5 = lm(dbirwt ~ tobacco + dmage + dmage2 + dmeduc + dmar + mblack + mhispan + motherr + foreignb + dfage + dfeduc + fblack + fhispan + fotherr + alcohol + drink + tripre0 + tripre2 + tripre3 + nprevist + adequac2 + adequac3 + first + dlivord + disllb + pre4000 + plural + diabete + anemia + cardiac + chyper, weights = Weights, data = middlee)
+summary(fit5)
+#Trust this one the most because in this model we are weighting the 
+#observations by the propensity score but we are also including all
+#the covariates. Including all of the covariates allows us to 
+#control for omitted variable bias while getting a precise estimate
+#of the average treatment effect. This model estimates the ATE as 
+#-222.745. This is the best estimate we have so far. 
+```
+
+#Question 11
+```{r}
+#In problem 1 we estimates two models. The first was a general 
+#linear regression of tobacco on birth weight. We estimated the 
+#coefficient on tobacco in that model to be -266.029. This model is
+#probably not very accurate due to omitted variable bias but it is 
+#a goo dbaseline regression. The second model we created was a 
+#general linear model that contained all the covariates. This model 
+#helped eliminalte omitted variable bias. The estimate for the 
+#tobacco coefficient in this model was -231.97645. 
+#In Question 8, we weighted the data by using our propensity score
+#methods. We then used matching tequniques to match the propensity 
+#scores. This model gives us an estimate of -232.43. This estimate 
+#is pretty close to the original regression we ran with all of the
+#covariates. 
+#In Question 9, we ran a weighted linear model on the data that had 
+#dropped the pscores outside the range we wanted. This left us 
+#with he data that was overlapped. The coefficient on tobacco was
+#-232.39. Once again, this coefficient is pretty close to the 
+#original linear regression we ran on all tthe covariates. I predict
+#there will be some omitted variable bias in this model. 
+#In Question 10, we ran a weighted linear model on the same data 
+#that contained the overlap data and not the data outside the min 
+#of the max and the max of the min. This model was a weighted linear
+#model that contained all of the covariates. The coefficient 
+#associated with tobacco is -222.745. I believe this is our 
+#most accurate model. These results are just as we would expect. 
+#If a mother smoked tobacco while she is pregnant, the birthweight 
+#of her child will be significantly reduced. 
+```
+
+

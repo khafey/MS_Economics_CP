@@ -1,0 +1,368 @@
+---
+title: "Problem Set 1"
+author: "Hunter Garfield & Kyle Hafey"
+date: "April 13, 2016"
+output: html_document
+---
+```{r,include=FALSE}
+
+```
+
+
+
+
+```{r,include=FALSE}
+setwd("~/Desktop/R_Data")
+library(foreign)
+library(stargazer)
+library(psych)
+#library(margins)
+
+d = read.dta("ps1.dta")
+options(digits = 5)
+#qb = read.dta("quarterofbirth.dta")
+```
+
+##Problem 1
+The Omnibus Budget Reconciliation Act of 1993 was signed into law by President Bill Clinton. It has been refereed to the deficit reduction act of 1993. The bill consisted of tax reforms that added and manipulated the marginal income tax brackets, corporate tax rates, Medicare, social security, gasoline taxes, phased out itemized deductions, changed the AMT tax rate, and also expanded the EITC and added inflation adjustments. The EITC expansion significantly increased the maximum credits available to a family with two or more children relative to that with one child and that with no children. In 2005 dollars, the difference between the maximum credits available to a family with two or more children and a family with one child rose from $105 in 1993 to $1,745 in 1996 when OBRA-93 became fully effective. Likewise, relative to a family with no children, the difference rose from $2,042 in 1993 to $4,024 in 1996. Labor supply predicts that the EITC expansion will increase the labor force participation of single women with children and will decrease the hours worked by single women with children (See Eissa, Leibman 1996). 
+Margins
+Extensive margin - total working (total hours worked) intensive margin - given a sample the percentage of people working (LFP) we should see an increase in the intensive margin but we don’t know what will happen to extensive margin The EITC program was significantly expanded for larger families. We predict different effects by family size. Theoretically, a single mother would require more money in order to provide for a larger family. The tax credit should incentivize mothers with more children to earn more money, but the mother will also want to be around to spend time with her children. This will be interesting to study which effect dominates. We predict that the EITC expansion to mothers with more children will result in fewer hours worked by the single mother and more single mothers entering the labor force. We predict the results will be easier to see for women with more children. 
+ 
+##Problem 2
+
+```{r}
+anykids = ifelse(d$children>0, 1, 0)
+post93 = ifelse(d$year>1993,1,0)
+d = cbind(d,anykids,post93)
+
+means0 = colMeans(d[which(d$children==0),])
+means1 = colMeans(d[which(d$children==1),])
+means2 = colMeans(d[which(d$children>=2),])
+
+means = cbind(means0,means1,means2)
+colnames(means) = c(">No Children",">One Child",">Two or More Children")
+
+```
+```{r,results='asis',echo=FALSE}
+stargazer(means, type = "html")
+```
+As we can see from the table, the unemployment rate is fairly constant across the groups. Mothers who have more children tend to be minorities (or not white). Female income tends to decrease as the mother has more children, this could be due to a number of reasons. Earn decreases as a mother has more children. Age decreases as a mother has more children. Education increases as a mother has more children. The percentage of people working decreases as a mother has more children. Unearn decreases from 0 to 1 child and then increases from 1 child to 2+ children.  
+
+```{r}
+dpre = d[which(d$post93==0),]
+dpost = d[which(d$post93==1),]
+
+means0pre = colMeans(dpre[which(dpre$children==0),])
+means0post = colMeans(dpost[which(dpost$children==0),])
+means1pre = colMeans(dpre[which(dpre$children==1),])
+means1post = colMeans(dpost[which(dpost$children==1),])
+means2pre = colMeans(dpre[which(dpre$children>=2),])
+means2post = colMeans(dpost[which(dpost$children>=2),])
+
+means2 = cbind(means0pre,means0post,means1pre,means1post,means2pre,means2post)
+means2 = means2[-c(2,12,13),]
+colnames(means2) = c(">No Child Pre93",">No Child Post93",">One Child Pre93",">One Child Post93",">2 Or MorePre93",">2 Or More Post93")
+```
+```{r,results='asis',echo=FALSE}
+stargazer(means2, type = "html")
+```
+Now, we can look at summary statistics for the treatment and control groups (before and after 1993).
+
+
+In this table, we can see the sample means that are subsetted by number of children, like the previous table. This table also shows what happens to each group before 1993 and after 1993, when the treatment took effect. This will let us see if there are differences in the sample means across time. First, I will start by analyzing mothers with no children across the time periods. The unemployment rate went down after the treatment took effect, finc and earnings went down after the treatment took effect, non white increases, the rest of the variables remained mostly constant. This will allow us to establish a causal effect with the difference in difference model because the group is constant over time. Next, I will look at the sample means for single mothers with one child. Unemployment rate falls over time, nonwhite increases, and finc and earn increase over time. The rest of the variables stay relatively constant. Finally, we will look at how the sample means differ from women with two or more children. Unemployment rate decreases; nonwhite increases, finc, earn and work increase over time. The rest of the variables stay fairly constant over time. This distribution of variables is constant so we should be able to use a difference in difference approach to find a causal effect.  
+
+##Problem 3
+```{r}
+meanschildpost = colMeans(dpost[which(dpost$children>=1),])
+
+table1 = cbind(means0post,meanschildpost)
+table1 = table1[-c(1,12,13),]
+colnames(table1) = c(">No Children Post 93", ">One or More Children Post 93")
+```
+```{r,results='asis',echo=FALSE}
+stargazer(table1, type = "html")
+```
+For this table, we are comparing single women without kids and single women with kids after 1993. Unemployment rate is higher for women with children. More people with children are not white. Family income and earned income go down for women with children, women without kids are older. Finally, more people work without kids than if they have kids. The estimate could be biased because the number of children effects if a woman works or not. This varies significantly across the number of children the woman has. Also, demographics are different. People with more children seem to be subject to demographic factors. People with children tend to be younger and less white.
+##Problem 4
+```{r}
+dchild = d[which(d$children>0),]
+dnone = d[which(d$children==0),]
+yearmeanschild = numeric(6)
+yearmeansnone = numeric(6)
+for(i in 1:6){
+ yearmeanschild[i] = mean(dchild[which(dchild$year==(i+1990)),10]) 
+ yearmeansnone[i] = mean(dnone[which(dnone$year==(i+1990)),10])
+}
+
+yearmeanschild = ts(yearmeanschild, start = 1991, frequency = 1)
+yearmeansnone = ts(yearmeansnone, start = 1991, frequency = 1)
+ts.plot(cbind(yearmeansnone,yearmeanschild), col = c(1,2), ylab = "Avg. Employment")
+legend("bottomright",c("No Children","Children"), lty = c(1,1),col = c(1,2))
+```
+
+This plot shows us that the employment patters for women and women with children seem to be very correlated between the periods 1991 and 1993. Since the lines seem to be relatively parallel through these points, we can hypothesize that the two groups are comparable. The spike in emplyment for women with children after 1993 suggests that the EITC expansion had a significant effect. Overall, it appears differencing may be an effective method for estimating the effect of the EITC on employment for women with children.
+
+##Problem 5
+```{r}
+fit1 = lm(work~ anykids +post93+anykids*post93, data = d)
+```
+
+```{r,echo=FALSE,results='asis'}
+stargazer(fit1, type = "html")
+```
+The results of the regression tell us having kids as a mother is associated with a decrease in the probability of working, and having kids after 1993 is associated with a further decrease in the probability of working. The coefficient on post93 tells us that whether or not an individual was observed before or after 1993 has no bearing on their probability of working. 
+
+##Problem 6
+```{r}
+hs = ifelse(d$ed==11, 1,0)
+cnc = describeBy(d$work, group = list(d$anykids,d$post93),mat=T,digits = 4)[,c(2,3,5,6,16)]
+cnchs = describeBy(d$work, group = list(d$anykids,d$post93,hs),mat=T,digits = 4)[,c(2,3,4,6,7,17)] 
+
+```
+```{r,echo=FALSE,results='asis'}
+cnctab = matrix(c(cnc[1,4:5],cnc[3,4:5],cnc[2,4:5],cnc[4,4:5]),nrow = 2,byrow = T)
+rownames(cnctab) = c("Without Children","With Children")
+colnames(cnctab) = c(">Mean Work Pre-93",">se Pre-93",">Mean Work Post-93",">se Post-93")
+
+cncnhstab = matrix(c(cnchs[1,5:6],cnchs[3,5:6],cnchs[2,5:6],cnchs[4,5:6]),nrow = 2,byrow = T)
+rownames(cncnhstab) = c("Without Children, No HS","With Children, No HS")
+colnames(cncnhstab) = c(">Mean Work Pre-93",">se Pre-93",">Mean Work Post-93",">se Post-93")
+
+cnchstab = matrix(c(cnchs[5,5:6],cnchs[7,5:6],cnchs[6,5:6],cnchs[8,5:6]),nrow = 2,byrow = T)
+rownames(cnchstab) = c("Without Children, HS","With Children, HS")
+colnames(cnchstab) = c(">Mean Work Pre-93",">se Pre-93",">Mean Work Post-93",">se Post-93")
+
+table = as.data.frame((rbind(cnctab,cncnhstab,cnchstab)))
+diff = as.numeric(table[,3]) - as.numeric(table[,1])
+table = cbind(table, diff)
+
+diffindiff = numeric(length(table[,1]))
+diffindiff[] = NA
+diffindiff[2] = diff[2] - diff[1]
+diffindiff[4] = diff[4] - diff[3]
+diffindiff[6] = diff[6] - diff[5]
+
+table = as.matrix(cbind(table,diffindiff))
+colnames(table)[5:6] = c(">Diff",">Diff-in-Diff")
+stargazer(table, type = "html", digits = 4)
+```
+*First difference is Post93 - Pre93, second difference is With Children - Without Children
+ 
+The estimated treatment effect calculated here is .0469. This is almost twice as high as the estimate presented in EL (.024). Because of this relationship, we expect the 1993 EITC expansion will have a significantly bigger effect on labor force participation among mothers with children. 
+
+##Problem 7
+```{r,echo=F}
+#Create 0,1,2+ kids rank
+d[,14:15] = numeric(13746)
+for(i in 1:13746){
+  if(d[i,4]==0){
+    d[i,14] = 0
+  } 
+  else
+  if(d[i,4]==1){
+    d[i,14] = 1
+  } 
+  else
+  if(d[i,4]>=2){
+    d[i,14] = 2
+  }
+}
+#Create highschool 
+for(i in 1:13746){
+  if(d[i,9]==11){
+    d[i,15] = 1
+  } 
+  else
+    d[i,15]=0
+}
+
+seven = describeBy(d$work, group = list(d[,14], d[,13], d[,15]), mat = TRUE)
+seven = seven[,c(2,3,4,6,7,17)]
+# colnames(seven) = c("kids", "Post93","Highschool" ,"n", "mean", "SE")
+  
+test = describeBy(d$work, group = list(d$V14,d$post93),mat = TRUE)
+test = test[,c(2,3,6,16)]
+# colnames(test) = c("Kids", "Post93", "mean", "SE")
+
+names = c("Without Children", "With one Child", "With 2 + children")
+Pre93mean = c(test[1,3], test[2,3],test[3,3])
+pre93SE = c(test[1,4], test[2,4],test[3,4])
+post93mean = c(test[4,3], test[5,3],test[6,3])
+post93SE = c(test[4,4], test[5,4],test[6,4])
+A = data.frame(names,Pre93mean,pre93SE, post93mean,post93SE)
+# colnames(c) = c("Names", "Pre93mean","pre93SE", "post93mean","post93SE")
+
+namesb = c("No HS,No child", "NO HS, 1 child", "No HS, 2+children")
+Pre93meanb = c(seven[1,5], seven[2,5], seven[3,5])
+pre93SEb = c(seven[1,6], seven[2,6], seven[3,6])
+post93meanb = c(seven[4,5], seven[5,5], seven[6,5])
+post93SEb = c(seven[4,6], seven[5,6], seven[6,6])
+B = data.frame(namesb, Pre93meanb, pre93SEb, post93meanb, post93SEb)
+
+namesc = c("HS,No child", "HS, 1 child", "HS, 2+children")
+Pre93meanc = c(seven[7,5], seven[8,5], seven[9,5])
+pre93SEc = c(seven[7,6], seven[8,6], seven[9,6])
+post93meanc = c(seven[10,5], seven[11,5], seven[12,5])
+post93SEc = c(seven[10,6], seven[11,6], seven[12,6])
+c = data.frame(namesc,Pre93meanc, pre93SEc, post93meanc, post93SEc)
+
+tablenames = c("Without Children", "With one Child", "With 2 + children","No HS,No child", "NO HS, 1 child", "No HS, 2+children", "HS,No child", "HS, 1 child", "HS, 2+children")
+col1 = c(Pre93mean, Pre93meanb, Pre93meanc)
+col2 = c(post93mean,post93meanb,post93meanc)
+col3 = c(pre93SE, pre93SEb, pre93SEc)
+col4 = c(post93SE, post93SEb, post93SEc)
+Seventable = data.frame(">Groups" = tablenames, ">Pre93mean" = col1, ">Pre93SE" = col3, ">Post93mean" = col2, ">Post93SE" = col4)
+Seventable$Difference = Seventable[,4] - Seventable[,2]
+Seventable$DiffNDiff = c(NA,Seventable[2,6]-Seventable[1,6],Seventable[3,6] - Seventable[1,6],NA,Seventable[5,6]-Seventable[4,6],Seventable[6,6] - Seventable[4,6], NA, Seventable[8,6] - Seventable[7,6],Seventable[9,6] - Seventable[7,6] )
+```
+```{r,echo=F,results="asis"}
+stargazer(as.matrix(Seventable), type = "html")
+
+```
+Difference is Postmean - Premean, DiffNDiff is the various treatments
+(1 or 2+ kids) - control(No kids)
+In all cases, the Diff in diff is larger for women with 2 or more children.
+This means the new EITC policy is likely to entice women with two or more 
+children into entering the labor force more than it would women with only 
+one child. 
+ 
+##Problem 8
+```{r}
+nekp93 = d$post93*d$anykids
+n1 = ifelse(d$year==1991,1,0)
+n2 = ifelse(d$year==1992,1,0)
+n5 = ifelse(d$year==1995,1,0)
+n6 = ifelse(d$year==1996,1,0)
+d = cbind(d,nekp93,n1,n2,n5,n6)
+prob = glm(work~anykids+post93+nekp93+n1+n2+n5+n6,data = d, family = binomial(link = "probit"))
+dpdxOLS = lm(work~anykids+post93+nekp93+n1+n2+n5+n6,data = d)
+```
+```{r,echo=FALSE,results='asis'}
+stargazer(prob, type = "html")
+```
+The probit estimation of the treatment effects are presented in the table above. We can see that the coefficient on post93 is not significantly different from zero, indicating that there was no trend in participation among the two groups. The negative coefficient on anykids suggests that having children is associated with less labor force participation on avergae. The positive coefficient on anykids interacted with post93 (nekp93) tells us that there is a positive association between a mother's labor force participation and participating in the EITC given that she has kids. This effect is larger in magnitude than the effect that we estimated in table 6 (.0469), but we cannot infer that the effect is actually greater because probit coefficients only reveal the direction of the effect.
+
+Below are the dp/dx values obtained using margins (mfx compute equivalent) and OLS
+```{r,echo=FALSE}
+#(margins(prob,factors = "continuous", type = "response",atmeans = T)[[1]])
+```
+
+```{r,echo=FALSE,results='asis'}
+stargazer(dpdxOLS, type = "html")
+```
+We can see from the above margins output and the OLS output that our dp/dx estimates do not differ significantly based on the calculation method used. Calculating these via OLS results in slightly lower standard errors. The coefficient on the interaction term estimated at the mean of the covariates of .047 is almost exactly the same as the difference in difference estimate that we calculated in problem 6 (.0469). This lines up very well with what we expected considering the two groups appeared relatively comparable in problem 4 as well.
+
+
+##Problem 9
+We included time dummies for 1991, 1992, 1995, and 1996 in our problem 8 analysis. We chose these years in the spirit of the authors analysis. It seems that they did so to account for time differences leading up to the expansion and then allowed the effects of the expansion to "settle in" by excluding the year of the expansion and the following year. These year effects were not significant so we do not expect our estimates to change much by excluding them 
+```{r}
+prob = glm(work~anykids+post93+nekp93,data = d, family = binomial(link = "probit"))
+```
+```{r,echo=FALSE,results='asis'}
+stargazer(prob, type = "html")
+```
+A expected, our estimates did not change much when excluding these specific year dummies. Below are the recalculated marginal effects.
+```{r,echo=FALSE}
+#(margins(prob,factors = "continuous", type = "response",atmeans = T)[[1]])
+```
+
+##Problem 10
+```{r}
+age2 = d$age^2
+ed2 = d$ed^2
+d = cbind(d,age2,ed2)
+model10 = glm(work ~ n1 + n2+ n5 + n6 + unearn + nonwhite + age + age2 + ed + ed2  + anykids + post93 + nekp93, family = binomial(link = probit), data = d)
+```
+```{r,echo=F,results='asis'}
+stargazer(model10,type = "html")
+```
+```{r,echo=F}
+#(margins(model10,factors = "continuous", type = "response",atmeans = T)[[1]])
+
+```
+The estimate associated with nonwhite tells us that if the mother is
+not white she is less likely to work. Because it is a probit model 
+we cannot say the magnitude. The estimate associated with other 
+income(unearn) tells us that if a woman has additional income she 
+is less likely to enter the labor force. Once again, because this 
+is a probit we cannot say the magnitude of the association.
+The treatment effect estimate increases from .047 to .058 (using margins)
+
+##Problem 11
+```{r}
+age2 = d$age^2
+ed2 = d$ed^2
+urkid = d$urate*d$anykids
+d = cbind(d,urkid)
+model11 = glm(work ~ n1 + n2+ n5 + n6 + unearn + nonwhite + age + age2 + ed + ed2 + urate + urkid + anykids + post93 + nekp93, family = binomial(link = probit), data = d)
+```
+```{r,echo=F,results='asis'}
+stargazer(model11,type = "html")
+```
+```{r,echo=F}
+#(margins(model11,factors = "continuous", type = "response",atmeans = T)[[1]])
+```
+
+Adding unemployment interacted with anykids increases our estimate of the treatment effect significantly from the one we obtained in problem 10. This suggests that business cycles may be harder on women with children with respect to how much they are able to work.
+
+##Problem 12
+```{r}
+model12 = glm(work ~ 0 + factor(state) + n1 + n2+ n5 + n6 + unearn + nonwhite + age + age2 + ed + ed2 + urate + anykids + post93 + nekp93 + urkid, family = binomial(link = probit), data = d)
+```
+```{r,echo=FALSE,results='asis'}
+marg12 = lm(work ~ 0 + factor(state) + n1 + n2+ n5 + n6 + unearn + nonwhite + age + age2 + ed + ed2 + urate + anykids + post93 + nekp93 + urkid,data = d)
+stargazer(marg12$coefficients[65], type="html")
+```
+
+Adding state fixed effects to our probit model results in a lower estimate than the one calculated previously. Based on the research design in the paper, we would expect that including state fixed effects would result in higher labor force participation among women, however we achieved a contrary result. 
+
+
+##Problem 13
+```{r}
+ch1 = ifelse(d$children==1,1,0)
+ch2 = ifelse(d$children>=2,1,0)
+ch193 = d$post93*ch1
+ch293 = d$post93*ch2
+d = cbind(d,ch1,ch2,ch193,ch293)
+model13 = glm(work ~ 0 + factor(state) + n1 + n2+ n5 + n6 + unearn + nonwhite + age + age2 + ed + ed2 + urate  + post93  + urkid+ch1+ch2+ch193+ch293, family = binomial(link = probit), data = d)
+```
+```{r,echo=FALSE,results='asis'}
+marg12 = lm(work ~  0 + factor(state) + n1 + n2+ n5 + n6 + unearn + nonwhite + age + age2 + ed + ed2 + urate  + post93  + urkid+ch1+ch2+ch193+ch293,data = d)
+stargazer(marg12, type = "html")
+```
+The estimates computed above tell us that women with 2 or more children (ch293) are more likely to enter the labor force following the expansion than women with one child. This makes sense because the EITC gave women benefits proprtional to their family size. Therefore, we would expect this boost in income to incentivize women with more children to enter the labor force.
+
+##Problem 14
+```{r}
+model13 = glm(work ~ 0 + factor(state) + n1 + n2+ n5 + n6 + unearn + nonwhite + age + age2 + ed + ed2 + urate  + post93  + urkid+ch2+ch293, family = binomial(link = probit), data = d)
+```
+```{r,echo=F,results='asis'}
+fuckthis=lm(work ~ 0 + factor(state) + n1 + n2+ n5 + n6 + unearn + nonwhite + age + age2 + ed + ed2 + urate  + post93  + urkid+ch2+ch293, data = d)
+stargazer(fuckthis, type = "html")
+```
+
+Our estimate on ch293 (two children, post 93) is slightly lower than it was in the last analysis that we performed. This confirms our conclusions above that having more children will increase a woman's probability of entering the labor force if they are eligible for the EITC after 1993.
+
+##Problem 15
+```{r}
+model = lm(work ~ 0+ factor(state) + unearn + nonwhite + age + age2 + ed + ed2 + urate   +urkid+ch2*factor(year)+ch1*factor(year),data = d)
+summary(model)
+ch2s = ts(model$coefficients[67:71], start = 1992, frequency = 1)
+ch1s = ts(model$coefficients[72:76],start = 1992, frequency = 1)
+plot.ts(ch1s,ylab="Ratio of LFPR to 1991 Rate")
+lines(ch2s, col = 2)
+legend("bottomright",legend = c("One Child","Two or More Children") ,lty = c(1,1), col = c(1,2))
+```
+
+The graph shows that women with two or more children benefitted highly from the EITC expansion in 1993. Post 1993, we can see that they make up a larger percentage of the increase in labor force participation than women with one child. 
+
+##Problem 16
+```{r}
+dat = d[d$year<=1993,]
+p91 = dat$year>=1992
+model16 = lm(work~anykids+p91 + p91*anykids, data = dat)
+```
+```{r,echo=F,results='asis'}
+stargazer(model16,type="html")
+```
+The negative coefficient on anykids tells us that having children is associated with a decrease in labor force participation. The fact that the year variable and the interaction term do not yield statistically significant estimataes tells us that they are not significant predictors of labor force participation for our "placebo" year.
